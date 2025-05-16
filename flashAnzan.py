@@ -49,7 +49,6 @@ class AnzanApp(QWidget):
         super().__init__()
         self.settings()
         self.initVars()
-        #self.warmup_stream()
         self.initUI()
 
         # Set layout stack
@@ -67,10 +66,6 @@ class AnzanApp(QWidget):
         n = int(samplerate * duration)
         t = [i * (duration / n) for i in range(n)]
         return [volume * (2 * abs(2 * (x * frequency % 1) - 1) - 1) for x in t]
-
-    #def waveBuffer(self):
-    #    self.wave = triangle_wave(440)
-    #    self.wave_bytes = b''.join(struct.pack('<h', int(s * 32767)) for s in wave)
 
     def play_once(self):
         pos = 0
@@ -94,29 +89,15 @@ class AnzanApp(QWidget):
         ) as stream:
             sd.sleep(int(len(self.wave) / 9680 * 1000))
 
-    #def warmup_stream(self, samplerate=9680):
-    #    def silent_callback(outdata, frames, time, status):
-    #        outdata[:] = b'\x00' * (frames * 2)
-    #    with sd.RawOutputStream(samplerate=samplerate, channels=1, dtype='int16', callback=silent_callback):
-    #        sd.sleep(100)  # ~0.1 sec silent warm-up
-
-    #def handle_sigint(self, signum, frame):
-    #    #self.player.close()
-    #    player.close()
-    #    app.quit()
-
     def initVars(self):
         self.randNums = list()
 
-        #self.wave = self.triangleWave(440)
-        self.wave = self.triangleWave(frequency=440, samplerate=9680)
+        self.wave = self.triangleWave(440)
         self.wave_bytes = b''.join(struct.pack('<h', int(s * 32767)) for s in self.wave)
-        #self.player = BeepPlayer()
         player = BeepPlayer()
 
         fontId = QFontDatabase.addApplicationFont("soroban.ttf")
         families = QFontDatabase.applicationFontFamilies(fontId)
-        #print(families)
 
         self.stack_initUI = QWidget()
         self.stack_playUI = QWidget()
@@ -132,7 +113,7 @@ class AnzanApp(QWidget):
         self.timer.timeout.connect(self.updateNumber)
 
         self.label_number = QLabel("")
-        self.label_number.setFont(QFont(families[0], 32))
+        self.label_number.setFont(QFont(families[0], 64))
         self.label_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.label_terms = QLabel("")
@@ -181,7 +162,6 @@ class AnzanApp(QWidget):
         self.layout_init.addLayout(self.layout_buttons)
 
         self.layout_play = QVBoxLayout()
-        #self.layout_play.addWidget(self.label_terms)
         self.layout_play.addWidget(self.label_number)
 
         self.btn_quit = QPushButton("Quit")
@@ -223,7 +203,6 @@ class AnzanApp(QWidget):
         self.startTimer()
 
     def closeEvent(self, event):
-        #self.player.close()
         player.close()
         event.accept()
 
@@ -252,7 +231,6 @@ class AnzanApp(QWidget):
 
     def stopTimer(self):
         self.timer.stop()
-        #self.player.close()
         self.label_terms.setText("")
         self.btn_play.setEnabled(True)
 
@@ -274,17 +252,11 @@ class AnzanApp(QWidget):
     def updateNumber(self):
         self.count -= 1
         if self.count >= 0:
-            #sd.play(self.wave, samplerate=9680)
-            #self.play_once()
-
-            #self.player.play_once(self.wave_bytes)
             player.play_once(self.wave_bytes)
             self.label_number.setText(str(self.randNums[self.count]))
         else:
             self.stopTimer()
             self.Stack.setCurrentIndex(2)   # Pre-Results
-            #self.label_terms.setText('+'.join(map(str, self.randNums[::-1])))
-            #self.label_number.setText(str(sum(self.randNums)))
 
     def quit(self):
         self.stopTimer()
@@ -308,20 +280,17 @@ class AnzanApp(QWidget):
             self.btn_play.setEnabled(False)
             self.btn_quit.setEnabled(False)
             self.generateRandNums()
-            #self.player.stream.start()
             self.label_terms.setText("")
             self.Stack.setCurrentIndex(1)
             self.getReady()
 
 def handle_sigint(signum, frame):
-    #self.player.close()
     player.close()
     app.quit()
 
 if __name__ in "__main__":
     global app, player
-    app = QApplication([])
-    #app = QApplication(sys.argv)
+    app = QApplication(sys.argv)
     player = BeepPlayer()
     signal.signal(signal.SIGINT, handle_sigint)
     main = AnzanApp()
