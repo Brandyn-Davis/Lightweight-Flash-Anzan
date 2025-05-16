@@ -55,6 +55,8 @@ class AnzanApp(QWidget):
         # Set layout stack
         self.stack_initUI.setLayout(self.layout_init)
         self.stack_playUI.setLayout(self.layout_play)
+        self.stack_preResultsUI.setLayout(self.layout_preResults)
+        self.stack_resultsUI.setLayout(self.layout_results)
         self.Stack.setCurrentIndex(0)
 
     def settings(self):
@@ -112,16 +114,19 @@ class AnzanApp(QWidget):
         #self.player = BeepPlayer()
         player = BeepPlayer()
 
-        self.id = QFontDatabase.addApplicationFont("soroban.ttf")
-        if self.id < 0: print("Error")
-        families = QFontDatabase.applicationFontFamilies(self.id)
+        fontId = QFontDatabase.addApplicationFont("soroban.ttf")
+        families = QFontDatabase.applicationFontFamilies(fontId)
         #print(families)
 
         self.stack_initUI = QWidget()
         self.stack_playUI = QWidget()
+        self.stack_preResultsUI = QWidget()
+        self.stack_resultsUI = QWidget()
         self.Stack = QStackedWidget(self)
         self.Stack.addWidget(self.stack_initUI)
         self.Stack.addWidget(self.stack_playUI)
+        self.Stack.addWidget(self.stack_preResultsUI)
+        self.Stack.addWidget(self.stack_resultsUI)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateNumber)
@@ -176,12 +181,29 @@ class AnzanApp(QWidget):
         self.layout_init.addLayout(self.layout_buttons)
 
         self.layout_play = QVBoxLayout()
-        self.layout_play.addWidget(self.label_terms)
+        #self.layout_play.addWidget(self.label_terms)
         self.layout_play.addWidget(self.label_number)
 
         self.btn_quit = QPushButton("Quit")
         self.layout_play.addWidget(self.btn_quit)
         self.btn_quit.pressed.connect(self.quit)
+
+        self.layout_preResults = QVBoxLayout()
+        self.btn_showResults = QPushButton("Show answer")
+        self.layout_preResults.addWidget(self.btn_showResults)
+        self.btn_showResults.pressed.connect(self.showResults)
+
+        self.layout_results = QVBoxLayout()
+        self.label_terms = QLabel("")
+        self.label_terms.setFont(QFont("Arial", 18))
+        self.label_terms.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout_results.addWidget(self.label_terms)
+
+        self.label_result = QLabel("")
+        self.label_result.setFont(QFont(families[0], 32))
+        self.label_result.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout_results.addWidget(self.label_result)
+        self.layout_results.addWidget(self.btn_quit)
 
         self.layout_master = QVBoxLayout(self)
         self.layout_master.addWidget(self.Stack)
@@ -204,6 +226,11 @@ class AnzanApp(QWidget):
         #self.player.close()
         player.close()
         event.accept()
+
+    def showResults(self):
+        self.label_terms.setText('+'.join(map(str, self.randNums[::-1])))
+        self.label_result.setText(str(sum(self.randNums)))
+        self.Stack.setCurrentIndex(3)
 
     def getReady(self):
         self.label_number.setText("Get ready.")
@@ -255,8 +282,9 @@ class AnzanApp(QWidget):
             self.label_number.setText(str(self.randNums[self.count]))
         else:
             self.stopTimer()
-            self.label_terms.setText('+'.join(map(str, self.randNums[::-1])))
-            self.label_number.setText(str(sum(self.randNums)))
+            self.Stack.setCurrentIndex(2)   # Pre-Results
+            #self.label_terms.setText('+'.join(map(str, self.randNums[::-1])))
+            #self.label_number.setText(str(sum(self.randNums)))
 
     def quit(self):
         self.stopTimer()
