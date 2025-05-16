@@ -7,7 +7,7 @@ import random
 import sounddevice as sd
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QListWidget, QSlider, QVBoxLayout, QLayout, QStackedWidget
 from PyQt6.QtCore import Qt, QUrl, QTimer
-from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtGui import QFont, QFontDatabase, QColor
 
 class BeepPlayer:
     def __init__(self, samplerate=9680):
@@ -20,8 +20,6 @@ class BeepPlayer:
             samplerate=self.samplerate,
             channels=1,
             dtype='int16',
-            #latency=0.02,
-            blocksize=64,
             callback=self.callback
         )
         self.stream.start()
@@ -116,6 +114,11 @@ class AnzanApp(QWidget):
         self.label_number.setFont(QFont(families[0], 64))
         self.label_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        if highContrast:
+            self.stack_playUI.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            self.stack_playUI.setStyleSheet("background-color: black;")
+            self.label_number.setStyleSheet("color: lime;")
+
         self.label_terms = QLabel("")
         self.label_terms.setFont(QFont("Arial", 18))
         self.label_terms.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -186,6 +189,7 @@ class AnzanApp(QWidget):
         self.layout_results.addWidget(self.btn_quit)
 
         self.layout_master = QVBoxLayout(self)
+        self.layout_master.setContentsMargins(0,0,0,0)
         self.layout_master.addWidget(self.Stack)
 
     def initUI(self):
@@ -289,7 +293,8 @@ def handle_sigint(signum, frame):
     app.quit()
 
 if __name__ in "__main__":
-    global app, player
+    global app, player, highContrast
+    highContrast = True
     app = QApplication(sys.argv)
     player = BeepPlayer()
     signal.signal(signal.SIGINT, handle_sigint)
