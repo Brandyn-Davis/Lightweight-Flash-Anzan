@@ -1,14 +1,51 @@
+import threading
+import time
+import struct
 import random
 import sounddevice as sd
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QListWidget, QSlider, QVBoxLayout, QLayout, QStackedWidget
 from PyQt6.QtCore import Qt, QUrl, QTimer
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontDatabase
+
+class BeepPlayer:
+    def __init__(self, samplerate=9680):
+        self.samplerate = samplerate
+        self.buffer = bytearray()
+        self.lock = threading.Lock()
+        self.event = threading.Event()
+
+        self.stream = sd.RawOutputStream(
+            samplerate=self.samplerate,
+            channels=1,
+            dtype='int16',
+            callback=self.callback
+        )
+        self.stream.start()
+
+    def callback(self, outdata, frames, time_info, status):
+        with self.lock:
+            n_bytes = frames * 2
+            chunk = self.buffer[:n_bytes]
+            outdata[:len(chunk)] = chunk
+            if len(chunk) < n_bytes:
+                outdata[len(chunk):] = b'\x00' * (n_bytes - len(chunk))
+            self.buffer = self.buffer[n_bytes:]
+
+    def play_once(self, wave_bytes):
+        with self.lock:
+            self.buffer += wave_bytes
+        self.event.set()
+
+    def close(self):
+        self.stream.stop()
+        self.stream.close()
 
 class AnzanApp(QWidget):
     def __init__(self):
         super().__init__()
         self.settings()
         self.initVars()
+        #self.warmup_stream()
         self.initUI()
 
         # Set layout stack
@@ -25,10 +62,50 @@ class AnzanApp(QWidget):
         t = [i * (duration / n) for i in range(n)]
         return [volume * (2 * abs(2 * (x * frequency % 1) - 1) - 1) for x in t]
 
+    #def waveBuffer(self):
+    #    self.wave = triangle_wave(440)
+    #    self.wave_bytes = b''.join(struct.pack('<h', int(s * 32767)) for s in wave)
+
+    def play_once(self):
+        pos = 0
+
+        def callback(outdata, frames, time, status):
+            nonlocal pos
+            if status:
+                print(status)
+            length = frames * 2
+            chunk = self.wave_bytes[pos:pos+length]
+            outdata[:len(chunk)] = chunk
+            if len(chunk) < length:
+                outdata[len(chunk):] = b'\x00' * (length - len(chunk))
+            pos += length
+
+        with sd.RawOutputStream(
+            samplerate=9680,
+            channels=1,
+            dtype='int16',
+            callback=callback
+        ) as stream:
+            sd.sleep(int(len(self.wave) / 9680 * 1000))
+
+    #def warmup_stream(self, samplerate=9680):
+    #    def silent_callback(outdata, frames, time, status):
+    #        outdata[:] = b'\x00' * (frames * 2)
+    #    with sd.RawOutputStream(samplerate=samplerate, channels=1, dtype='int16', callback=silent_callback):
+    #        sd.sleep(100)  # ~0.1 sec silent warm-up
+
     def initVars(self):
         self.randNums = list()
 
-        self.wave = self.triangleWave(440)
+        #self.wave = self.triangleWave(440)
+        self.wave = self.triangleWave(frequency=440, samplerate=9680)
+        self.wave_bytes = b''.join(struct.pack('<h', int(s * 32767)) for s in self.wave)
+        self.player = BeepPlayer()
+
+        self.id = QFontDatabase.addApplicationFont("soroban.ttf")
+        if self.id < 0: print("Error")
+        families = QFontDatabase.applicationFontFamilies(self.id)
+        #print(families)
 
         self.stack_initUI = QWidget()
         self.stack_playUI = QWidget()
@@ -40,7 +117,7 @@ class AnzanApp(QWidget):
         self.timer.timeout.connect(self.updateNumber)
 
         self.label_number = QLabel("")
-        self.label_number.setFont(QFont("Arial", 32))
+        self.label_number.setFont(QFont(families[0], 32))
         self.label_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.label_terms = QLabel("")
@@ -155,7 +232,9 @@ class AnzanApp(QWidget):
     def updateNumber(self):
         self.count -= 1
         if self.count >= 0:
-            sd.play(self.wave, samplerate=9680)
+            #sd.play(self.wave, samplerate=9680)
+            #self.play_once()
+            self.player.play_once(self.wave_bytes)
             self.label_number.setText(str(self.randNums[self.count]))
         else:
             self.stopTimer()
