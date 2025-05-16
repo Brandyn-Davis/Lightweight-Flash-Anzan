@@ -1,3 +1,5 @@
+import sys
+import signal
 import threading
 import time
 import struct
@@ -18,6 +20,8 @@ class BeepPlayer:
             samplerate=self.samplerate,
             channels=1,
             dtype='int16',
+            #latency=0.02,
+            blocksize=64,
             callback=self.callback
         )
         self.stream.start()
@@ -94,13 +98,19 @@ class AnzanApp(QWidget):
     #    with sd.RawOutputStream(samplerate=samplerate, channels=1, dtype='int16', callback=silent_callback):
     #        sd.sleep(100)  # ~0.1 sec silent warm-up
 
+    #def handle_sigint(self, signum, frame):
+    #    #self.player.close()
+    #    player.close()
+    #    app.quit()
+
     def initVars(self):
         self.randNums = list()
 
         #self.wave = self.triangleWave(440)
         self.wave = self.triangleWave(frequency=440, samplerate=9680)
         self.wave_bytes = b''.join(struct.pack('<h', int(s * 32767)) for s in self.wave)
-        self.player = BeepPlayer()
+        #self.player = BeepPlayer()
+        player = BeepPlayer()
 
         self.id = QFontDatabase.addApplicationFont("soroban.ttf")
         if self.id < 0: print("Error")
@@ -190,8 +200,12 @@ class AnzanApp(QWidget):
         self.btn_quit.setEnabled(True)
         self.startTimer()
 
+    def closeEvent(self, event):
+        #self.player.close()
+        player.close()
+        event.accept()
+
     def getReady(self):
-        self.btn_quit.setEnabled(False)
         self.label_number.setText("Get ready.")
         QTimer.singleShot(1000, self.getReady1)
     def getReady1(self):
@@ -211,6 +225,7 @@ class AnzanApp(QWidget):
 
     def stopTimer(self):
         self.timer.stop()
+        #self.player.close()
         self.label_terms.setText("")
         self.btn_play.setEnabled(True)
 
@@ -234,7 +249,9 @@ class AnzanApp(QWidget):
         if self.count >= 0:
             #sd.play(self.wave, samplerate=9680)
             #self.play_once()
-            self.player.play_once(self.wave_bytes)
+
+            #self.player.play_once(self.wave_bytes)
+            player.play_once(self.wave_bytes)
             self.label_number.setText(str(self.randNums[self.count]))
         else:
             self.stopTimer()
@@ -261,14 +278,24 @@ class AnzanApp(QWidget):
     def playPressed(self):
         if not self.timer.isActive():
             self.btn_play.setEnabled(False)
+            self.btn_quit.setEnabled(False)
             self.generateRandNums()
+            #self.player.stream.start()
             self.label_terms.setText("")
             self.Stack.setCurrentIndex(1)
             self.getReady()
 
+def handle_sigint(signum, frame):
+    #self.player.close()
+    player.close()
+    app.quit()
 
 if __name__ in "__main__":
+    global app, player
     app = QApplication([])
+    #app = QApplication(sys.argv)
+    player = BeepPlayer()
+    signal.signal(signal.SIGINT, handle_sigint)
     main = AnzanApp()
     main.show()
     app.exec()
