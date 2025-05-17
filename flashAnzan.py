@@ -7,7 +7,7 @@ import random
 import sounddevice as sd
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QListWidget, QSlider, QVBoxLayout, QLayout, QStackedWidget
 from PyQt6.QtCore import Qt, QUrl, QTimer
-from PyQt6.QtGui import QFont, QFontDatabase, QColor
+from PyQt6.QtGui import QFont, QFontDatabase, QColor, QKeyEvent
 
 class BeepPlayer:
     def __init__(self, samplerate=9680):
@@ -110,6 +110,13 @@ class AnzanApp(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateNumber)
 
+        self.timer_getReady = QTimer(self)
+        self.timer_getReady.timeout.connect(self.getReady1)
+        self.timer_getReady1 = QTimer(self)
+        self.timer_getReady1.timeout.connect(self.getReady2)
+        self.timer_getReady2 = QTimer(self)
+        self.timer_getReady2.timeout.connect(self.playUI)
+
         self.label_number = QLabel("")
         self.label_number.setFont(QFont(families[0], 64))
         self.label_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -203,8 +210,15 @@ class AnzanApp(QWidget):
         self.label_count.setText(f"Numbers per round: {self.count}")
 
     def playUI(self):
+        self.stopTimer()
         self.btn_quit.setEnabled(True)
         self.startTimer()
+
+    def keyPressEvent(self, event):
+        if self.Stack.currentIndex() != 0:
+            if isinstance(event, QKeyEvent):
+                if (event.text() == 'q'):
+                    self.quit()
 
     def closeEvent(self, event):
         player.close()
@@ -217,13 +231,15 @@ class AnzanApp(QWidget):
 
     def getReady(self):
         self.label_number.setText("Get ready.")
-        QTimer.singleShot(1000, self.getReady1)
+        self.timer_getReady.start(1000)
     def getReady1(self):
+        self.stopTimer()
         self.label_number.setText("Get ready..")
-        QTimer.singleShot(1000, self.getReady2)
+        self.timer_getReady1.start(1000)
     def getReady2(self):
+        self.stopTimer()
         self.label_number.setText("Get ready...")
-        QTimer.singleShot(1000, self.playUI)
+        self.timer_getReady2.start(1000)
 
     def startTimer(self):
         if self.timer.isActive():
@@ -235,6 +251,9 @@ class AnzanApp(QWidget):
 
     def stopTimer(self):
         self.timer.stop()
+        self.timer_getReady.stop()
+        self.timer_getReady1.stop()
+        self.timer_getReady2.stop()
         self.label_terms.setText("")
         self.btn_play.setEnabled(True)
 
